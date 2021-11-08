@@ -344,7 +344,7 @@ Finally, finish this parser that should parse just one specific `Char`:
 -}
 
 char :: Char -> Parser Char
-char c = filter (== c) alphaChar
+char c = satisfy (== c)
 
 {-
 ~~~~~~~~~~~{.haskell}
@@ -789,11 +789,17 @@ Challenge (will not be on the quiz): use the `Alternative` operators to
 implement a parser that parses zero or more occurrences of `p`, separated by
 `sep`.
 -}
--- TODO: do the challenge?
+-- TODO: broken file??????
 
 sepBy :: Parser a -> Parser b -> Parser [a]
-sepBy p sep = undefined
+sepBy p sep = (:) <$> p <*> many (sep *> p) <|> pure []
 
+-- >>> doParse (sepBy oneNat (char ',')) "1,12,0,"
+-- >>> doParse (sepBy oneNat (char '8')) "888"
+-- >>> doParse (sepBy (char '8') (char '8')) "888"
+-- Just ([1,12,0],",")
+-- Just ([888],"")
+-- Just ("88","")
 {-
 ~~~~~{.haskell}
 ghci > doParse (sepBy oneNat (char ',')) "1,12,0,3"
