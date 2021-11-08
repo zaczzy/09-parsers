@@ -13,6 +13,7 @@ import Control.Applicative
 import Control.Monad (guard)
 import Data.Char
 import Text.Read (readMaybe)
+import qualified Text.Read as Maybe
 import Prelude hiding (filter)
 
 {-
@@ -124,7 +125,7 @@ newtype State s a = S { runState :: s -> (a, s) }
 
 Indeed, a `Parser`, like a state transformer, is a monad! There are good
 definitions of the `return` and `(>>=)` functions.
-
+TODO: what does the below mean?
 However, most of the time, we don't need the full monadic structure for parsing.
 Just deriving the applicative operators for this type will allow us to parse
 any context-free grammar. So in the material below, keep your eye out for
@@ -171,7 +172,11 @@ char of a (nonempty) string and interprets it as an int in the range
 -}
 
 oneDigit :: Parser Int
-oneDigit = undefined
+oneDigit = P $ \s -> case s of
+  [] -> Nothing
+  c : str -> do
+    digit <- readMaybe [c]
+    return (digit, str)
 
 {-
 ~~~~~{.haskell}
@@ -202,7 +207,11 @@ if the first character satisfies the predicate.
 -}
 
 satisfy :: (Char -> Bool) -> Parser Char
-satisfy f = undefined
+satisfy f = P $ \s -> case s of
+  [] -> Nothing
+  c : str -> do
+    guard (f c)
+    return (c, str)
 
 {-
 ~~~~~{.haskell}
