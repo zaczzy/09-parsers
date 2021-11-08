@@ -297,7 +297,10 @@ Of course! Like lists, the type constructor `Parser` is a functor.
 
 instance Functor Parser where
   fmap :: (a -> b) -> Parser a -> Parser b
-  fmap = undefined
+  fmap f pa = P $
+    \s -> do
+      (a, str) <- doParse pa s
+      return (f a, str)
 
 {-
 With `get`, `satisfy`, `filter`, and `fmap`, we now have a small library
@@ -341,7 +344,7 @@ Finally, finish this parser that should parse just one specific `Char`:
 -}
 
 char :: Char -> Parser Char
-char c = undefined
+char c = filter (== c) alphaChar
 
 {-
 ~~~~~~~~~~~{.haskell}
@@ -379,7 +382,10 @@ other and returns the pair of resulting values...
 -}
 
 pairP0 :: Parser a -> Parser b -> Parser (a, b)
-pairP0 = undefined
+pairP0 pa pb = P $ \s -> do
+  (a, cs) <- doParse pa s
+  (b, cs') <- doParse pb cs
+  return ((a, b), cs')
 
 {-
 and use that to rewrite `twoChar` more elegantly like this:
@@ -554,7 +560,9 @@ see if you can figure out an appropriate definition of `(>>=)`.
 -}
 
 bindP :: Parser a -> (a -> Parser b) -> Parser b
-bindP = undefined
+bindP pa f = P $ \s -> do
+  (a, as) <- doParse pa s
+  doParse (f a) as
 
 {-
 Recursive Parsing
@@ -584,7 +592,7 @@ For fun, try to write `string` using `foldr` for the list recursion.
 -}
 
 string' :: String -> Parser String
-string' = foldr undefined undefined
+string' = foldr (\x p -> (:) <$> char x <*> p) (pure "")
 
 {-
 Furthermore, we can use natural number recursion to write a parser that grabs
@@ -781,6 +789,7 @@ Challenge (will not be on the quiz): use the `Alternative` operators to
 implement a parser that parses zero or more occurrences of `p`, separated by
 `sep`.
 -}
+-- TODO: do the challenge?
 
 sepBy :: Parser a -> Parser b -> Parser [a]
 sepBy p sep = undefined
@@ -854,6 +863,7 @@ above was parsed as
 ~~~~~{.haskell}
 11 + (22 - (33 + 45))
 ~~~~~
+-- TODO: I don't undestand what `binExp` is.
 
 because in each `binExp` we require the left operand to be an
 integer. In other words, we are assuming that each operator is *right
@@ -932,7 +942,7 @@ Just (1021,"")
 ~~~~~
 
 Do you understand why the first parse returned `121`?
-
+It recognize that "10 * 2" is a mulE and thus evaluated it first.
 Parsing Pattern: Associativity via Chaining
 -------------------------------------------
 
@@ -951,6 +961,8 @@ in `infixAp`, thus
 ~~~~~{.haskell}
 addE = infixAp addE addOp mulE <|> mulE
 ~~~~~
+TODO: emphasize. This is the point from HW5 as well, never write a parse
+function that calls self without consuming any input.
 
 but this would be disastrous. Can you see why?  The parser for `addE`
 directly (recursively) calls itself *without consuming any input!*
@@ -971,6 +983,7 @@ long as we can.
 
 Instead, we want to parse the input as starting with a multiplication expression followed by
 any number of addition operators and multiplication expressions.
+-- TODO: understand below better
 We can temporarily store the operators and expressions in a list of pairs.
 Then, we'll `foldl` over this list, using each operator to combine the current
 result with the next number.
@@ -1017,6 +1030,7 @@ mulE1 = foldl comb <$> factorE1 <*> rest
     comb x (op, y) = x `op` y
     rest = many ((,) <$> mulOp <*> factorE1)
 
+-- TODO: Question: why is addE used here and not addE1?
 factorE1 :: Parser Int
 factorE1 = oneNat <|> parenP addE
 
@@ -1027,7 +1041,7 @@ The above is indeed left associative:
 ghci> doParse addE1 "10-1-1"
 Just (8,"")
 ~~~~~
-
+-- TODO: I don't understand... :( :(
 Also, it is very easy to spot and bottle the chaining computation
 pattern: the only differences are the *base* parser (`mulE1` vs
 `factorE1`) and the binary operation (`addOp` vs `mulOp`).  We simply
@@ -1062,6 +1076,7 @@ Just (12,"")
 Of course, we can generalize `chainl1` even further so that it is not
 specialized to parsing `Int` expressions. Try to update the type above so that
 it is more polymorphic.
+-- TODO: finish the polymorphic type task above.
 
 This concludes our exploration of applicative parsing, but what we've covered
 is really just the tip of an iceberg. Though parsing is a very old problem,
