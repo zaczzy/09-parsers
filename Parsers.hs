@@ -592,7 +592,7 @@ For fun, try to write `string` using `foldr` for the list recursion.
 -}
 
 string' :: String -> Parser String
-string' = foldr (\x p -> (:) <$> char x <*> p) (pure "")
+string' = foldr (\x p -> (:) <$> char x <*> p) (pure "") 
 
 {-
 Furthermore, we can use natural number recursion to write a parser that grabs
@@ -621,7 +621,7 @@ Let's write a combinator that takes two sub-parsers and chooses between them.
 -}
 
 chooseFirstP :: Parser a -> Parser a -> Parser a
-p1 `chooseFirstP` p2 = P $ \s -> doParse p1 s `firstJust` doParse p2 s
+p1 `chooseFirstP` p2 = P $ \s -> doParse p1 s `secondJust` doParse p2 s
 
 {-
 How to write it?  Well, we want to return a successful parse if *either*
@@ -634,6 +634,10 @@ the second parser in the case that the first parser fails.
 firstJust :: Maybe a -> Maybe a -> Maybe a
 firstJust (Just x) _ = Just x
 firstJust Nothing y = y
+
+secondJust :: Maybe a -> Maybe a -> Maybe a
+secondJust _ (Just y)  = Just y
+secondJust y Nothing = y
 
 {-
 In the definition of `chooseFirstP`, note how we duplicate the input string
@@ -749,7 +753,7 @@ or more times, whereas `some` runs the computation one or more times. Both
 return their results in a list.
 
 < many :: Alternative f => f a -> f [a]
-< many v = some v <|> pure []
+< many v = (:) <$> v <*> many v <|> pure []
 
 < some :: Alternative f => f a -> f [a]   --- result list is guaranteed to be nonempty
 < some v = (:) <$> v <*> many v
@@ -1038,7 +1042,7 @@ mulE1 = foldl comb <$> factorE1 <*> rest
 
 -- TODO: Question: why is addE used here and not addE1?
 factorE1 :: Parser Int
-factorE1 = oneNat <|> parenP addE
+factorE1 = oneNat <|> parenP addE1
 
 {-
 The above is indeed left associative:
@@ -1089,4 +1093,11 @@ is really just the tip of an iceberg. Though parsing is a very old problem,
 studied since the dawn of computing, algebraic structures in Haskell bring a
 fresh perspective that has now been transferred from Haskell to many other
 languages.
+-}
+
+{-
+ NOTE: Parser a <|> Parser b
+ If a and b parse on different first characters, then the order doesn't matter
+ Otherwise if a parse "<=" and b parse "<" then parse a must be in front! 
+ The more restricted one!
 -}
