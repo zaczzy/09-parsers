@@ -47,7 +47,7 @@ Use this definition to parse a maximal nonempty sequence of nonreserved characte
 -}
 
 text :: Parser String
-text = undefined
+text = some (satisfy (not . reserved))
 
 {-
 ~~~~{.haskell}
@@ -63,7 +63,7 @@ and then use this definition to parse nonreserved characters into XML.
 -}
 
 pcdata :: Parser SimpleXML
-pcdata = undefined
+pcdata = PCDATA <$> text
 
 {-
 ~~~~{.haskell}
@@ -75,12 +75,12 @@ Parse an empty element, like `"<br/>"`
 -}
 
 emptyContainer :: Parser SimpleXML
-emptyContainer = undefined
+emptyContainer = char '<' *> (Element <$> text <*> pure []) <* string "/>"
 
 {-
 ~~~~~{.haskell}
 Xml> doParse emptyContainer "<br/>sdfsdf"
-Just (Element "br" [],"sdfsdf")
+Just (Element "br" [],"]-sdfsdf")
 ~~~~~
 
 Parse a container element: this consists of an open tag, a (potentially empty)
@@ -90,8 +90,28 @@ example, `container pcdata` should recognize
 NOT need to make sure that the closing tag matches the open tag.
 -}
 
+parseOpenTag :: Parser SimpleXML
+parseOpenTag = char '<' *> (Element <$> text <*> pure []) <* char '>'
+
+appendChild :: SimpleXML -> [SimpleXML] -> SimpleXML
+appendChild (Element tagname _) children = Element tagname children
+appendChild (PCDATA _) children = error "not possible"
+
+parseCloseTag :: Parser String
+parseCloseTag = string "</" *> text <* char '>'
+
 container :: Parser SimpleXML -> Parser SimpleXML
-container p = undefined
+container p = appendChild <$> parseOpenTag <*> many p <* parseCloseTag
+
+-- better solution
+open :: Parser String
+open = char '<' *> text <* char '>'
+
+close :: Parser String
+close = string "</" *> text <* char '>'
+
+container' :: Parser SimpleXML -> Parser SimpleXML
+container' p = (Element <$> open <*> many p) <* close
 
 {-
 ~~~~~{.haskell}
@@ -109,7 +129,8 @@ Now put the above together to construct a parser for simple XML data:
 -}
 
 xml :: Parser SimpleXML
-xml = undefined
+-- xml = container (xml <|> emptyContainer <|> pcdata)
+xml = pcdata <|> emptyContainer <|> container xml
 
 {-
 ~~~~~{.haskell}
